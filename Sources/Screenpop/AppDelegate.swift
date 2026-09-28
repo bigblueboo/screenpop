@@ -18,6 +18,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.delegate = self
         item.menu = menu
         statusItem = item
+        NSApp.mainMenu = Self.makeMainMenu()
 
         hotKey.register(settings.shortcut)
         Task.detached(priority: .utility) { Cutout.warmUp() }
@@ -37,6 +38,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit Screenpop", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         for item in menu.items where item.action != #selector(NSApplication.terminate(_:)) { item.target = self }
+    }
+
+    /// Never shown (we're a menu bar app), but text fields only get ⌘V/⌘C/⌘A/⌘Z
+    /// and windows only get ⌘W through main-menu key equivalents.
+    private static func makeMainMenu() -> NSMenu {
+        let edit = NSMenu(title: "Edit")
+        edit.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
+        edit.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "Z")
+        edit.addItem(.separator())
+        edit.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        edit.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        edit.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        edit.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+
+        let window = NSMenu(title: "Window")
+        window.addItem(withTitle: "Close", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+
+        let main = NSMenu()
+        for submenu in [NSMenu(title: "Screenpop"), edit, window] {
+            main.addItem(withTitle: submenu.title, action: nil, keyEquivalent: "").submenu = submenu
+        }
+        return main
     }
 
     @objc private func capture() { pipeline.capture() }
