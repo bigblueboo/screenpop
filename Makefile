@@ -16,10 +16,10 @@ app:
 		|| { echo "warning: couldn't sign with '$(IDENTITY)' (keychain locked?); signing ad-hoc." \
 		     "Screen Recording permission will reset on each rebuild."; \
 		     codesign --force --options runtime --sign - $(APP); }
-	@codesign -dv $(APP) 2>&1 | grep -E '^(Authority|Signature)=' | head -1
+	@codesign -dvv $(APP) 2>&1 | grep -E '^(Authority|Signature)=' | head -1
 
 install: app
-	-pkill -x Screenpop
+	@pkill -x Screenpop || true
 	rm -rf $(DEST)/Screenpop.app
 	ditto $(APP) $(DEST)/Screenpop.app
 	open $(DEST)/Screenpop.app

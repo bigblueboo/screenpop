@@ -8,7 +8,7 @@ A menu bar app for macOS. Press ⌃⇧4, drag a rectangle, and Screenpop cuts th
 make install          # builds, signs, copies to /Applications, launches
 ```
 
-Run it from a terminal on the Mac itself (not over SSH). Signing needs the login keychain unlocked, and a stable signature is what keeps the Screen Recording permission across rebuilds. On first launch macOS asks for Screen Recording access; grant it, then reopen Screenpop.
+Run it from a terminal on the Mac itself (not over SSH). Signing needs the login keychain unlocked, and a stable signature is what keeps the Screen Recording permission across rebuilds. If a Mac's development certificate is stale, the app builds but refuses to launch ("Launchd job spawn failed", code 163). Run `make install IDENTITY=-` there to sign ad-hoc instead. On first launch macOS asks for Screen Recording access; grant it, then reopen Screenpop.
 
 The OpenAI key is looked up in this order:
 
