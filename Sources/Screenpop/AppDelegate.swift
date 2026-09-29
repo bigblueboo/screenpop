@@ -33,6 +33,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(.separator())
         menu.addItem(withTitle: "Remove Background", action: #selector(toggleBackground), keyEquivalent: "")
             .state = settings.removeBackground ? .on : .off
+        menu.addItem(withTitle: "Copy to Clipboard", action: #selector(toggleClipboard), keyEquivalent: "")
+            .state = settings.copyToClipboard ? .on : .off
         menu.addItem(withTitle: "Open Screenshots Folder", action: #selector(openFolder), keyEquivalent: "")
         menu.addItem(withTitle: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
         menu.addItem(.separator())
@@ -65,6 +67,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func capture() { pipeline.capture() }
 
     @objc private func toggleBackground() { settings.removeBackground.toggle() }
+
+    @objc private func toggleClipboard() { settings.copyToClipboard.toggle() }
 
     @objc private func openFolder() {
         try? FileManager.default.createDirectory(at: settings.saveFolder, withIntermediateDirectories: true)

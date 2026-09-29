@@ -60,14 +60,14 @@ final class Pipeline {
         }
         let image = cutout ?? shot.image
         let png = try ImageFile.png(image, dpi: shot.dpi)
-        Clipboard.put(png: png, image: image)
+        if settings.copyToClipboard { Clipboard.put(png: png, image: image) }
 
         let folder = settings.saveFolder
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let url = FileNaming.uniqueURL(in: folder, base: FileNaming.timestamp(.now))
         try png.write(to: url)
 
-        let card = CaptureCard(image: image, url: url, isCutout: cutout != nil)
+        let card = CaptureCard(image: image, url: url, isCutout: cutout != nil, copied: settings.copyToClipboard)
         if settings.removeBackground && cutout == nil { card.note = "No subject found, so the full capture was kept." }
         hud.present(card)
 

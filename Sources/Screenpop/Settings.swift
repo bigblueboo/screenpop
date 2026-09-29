@@ -12,6 +12,10 @@ final class Settings {
         didSet { defaults.set(removeBackground, forKey: "removeBackground") }
     }
 
+    var copyToClipboard: Bool {
+        didSet { defaults.set(copyToClipboard, forKey: "copyToClipboard") }
+    }
+
     var saveFolder: URL {
         didSet { defaults.set(saveFolder.path, forKey: "saveFolder") }
     }
@@ -22,6 +26,7 @@ final class Settings {
 
     init() {
         removeBackground = defaults.object(forKey: "removeBackground") as? Bool ?? true
+        copyToClipboard = defaults.object(forKey: "copyToClipboard") as? Bool ?? true
         saveFolder = defaults.string(forKey: "saveFolder").map { URL(fileURLWithPath: $0) }
             ?? FileManager.default.homeDirectoryForCurrentUser.appending(path: "Pictures/Screenpop")
         shortcut = defaults.data(forKey: "shortcut").flatMap { try? JSONDecoder().decode(Shortcut.self, from: $0) }

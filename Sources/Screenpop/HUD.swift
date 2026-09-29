@@ -7,14 +7,22 @@ import SwiftUI
 final class CaptureCard {
     let image: NSImage
     let isCutout: Bool
+    let copied: Bool
     var url: URL
     var isNaming = true
     var note: String?
 
-    init(image: CGImage, url: URL, isCutout: Bool) {
+    init(image: CGImage, url: URL, isCutout: Bool, copied: Bool) {
         self.image = NSImage(cgImage: image, size: .zero)
         self.url = url
         self.isCutout = isCutout
+        self.copied = copied
+    }
+
+    /// Always says whether the image is on the clipboard, even when a note replaces the hint.
+    var subtitle: String {
+        let detail = note ?? "Drag it anywhere, or click to show in Finder."
+        return copied ? "Copied. \(detail)" : detail
     }
 }
 
@@ -128,7 +136,7 @@ private struct CardView: View {
                         .contentTransition(.opacity)
                     if card.isNaming { ProgressView().controlSize(.mini) }
                 }
-                Text(card.note ?? "Copied. Drag it anywhere, or click to show in Finder.")
+                Text(card.subtitle)
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                     .lineLimit(2)

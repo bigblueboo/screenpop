@@ -18,7 +18,7 @@ The OpenAI key is looked up in this order:
 
 Without a key, captures still work and keep a timestamp name.
 
-Menu bar → Settings… changes the shortcut, the save folder, background removal, and open-at-login. With background removal off, you get a plain named screenshot. If Vision finds no subject (a text-only UI, say), you get the full rectangle.
+Menu bar → Settings… changes the shortcut, the save folder, background removal, copying to the clipboard, and open-at-login. With background removal off, you get a plain named screenshot. If Vision finds no subject (a text-only UI, say), you get the full rectangle.
 
 To test the pipeline without the UI:
 

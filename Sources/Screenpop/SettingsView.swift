@@ -20,6 +20,7 @@ struct SettingsView: View {
                     ShortcutRecorder(shortcut: $settings.shortcut, onRecording: onRecording)
                 }
                 Toggle("Remove background", isOn: $settings.removeBackground)
+                Toggle("Copy to clipboard", isOn: $settings.copyToClipboard)
                 LabeledContent("Save to") {
                     HStack {
                         Text(settings.saveFolder.path.replacingOccurrences(of: NSHomeDirectory(), with: "~"))
