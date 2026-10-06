@@ -6,16 +6,18 @@ import ScreenpopCore
 final class Pipeline {
     private let settings: Settings
     private let hud: HUD
+    private let onNeedsAccess: () -> Void
     private var selecting = false
 
-    init(settings: Settings, hud: HUD) {
+    init(settings: Settings, hud: HUD, onNeedsAccess: @escaping () -> Void) {
         self.settings = settings
         self.hud = hud
+        self.onNeedsAccess = onNeedsAccess
     }
 
     func capture() {
         guard !selecting else { return }
-        guard CGPreflightScreenCaptureAccess() else { return Alerts.screenRecordingNeeded() }
+        guard CGPreflightScreenCaptureAccess() else { return onNeedsAccess() }
         selecting = true
         Task {
             do {
@@ -53,10 +55,15 @@ final class Pipeline {
             return try await Namer(apiKey: key).name(for: shot.image)
         }
 
-        let cutout: CGImage? = if settings.removeBackground {
-            try await Task.detached(priority: .userInitiated) { try Cutout.liftSubject(from: shot.image) }.value
-        } else {
-            nil
+        var cutout: CGImage?
+        var note: String?
+        if settings.removeBackground {
+            do {
+                cutout = try await Task.detached(priority: .userInitiated) { try Cutout.liftSubject(from: shot.image) }.value
+                if cutout == nil { note = "No subject found, so the full capture was kept." }
+            } catch {
+                note = "Background removal failed, so the full capture was kept."
+            }
         }
         let image = cutout ?? shot.image
         let png = try ImageFile.png(image, dpi: shot.dpi)
@@ -68,7 +75,7 @@ final class Pipeline {
         try png.write(to: url)
 
         let card = CaptureCard(image: image, url: url, isCutout: cutout != nil, copied: settings.copyToClipboard)
-        if settings.removeBackground && cutout == nil { card.note = "No subject found, so the full capture was kept." }
+        card.note = note
         hud.present(card)
 
         // The file exists under a timestamp name first so drag and clipboard work instantly.
@@ -77,7 +84,7 @@ final class Pipeline {
             try FileManager.default.moveItem(at: url, to: named)
             card.url = named
         } catch {
-            card.note = error.localizedDescription
+            card.note = [card.note, error.localizedDescription].compactMap { $0 }.joined(separator: " ")
         }
         card.isNaming = false
         hud.settle(card)
@@ -102,18 +109,5 @@ enum Alerts {
         let alert = NSAlert(error: error)
         NSApp.activate()
         alert.runModal()
-    }
-
-    static func screenRecordingNeeded() {
-        CGRequestScreenCaptureAccess()
-        let alert = NSAlert()
-        alert.messageText = "Screenpop needs Screen Recording access"
-        alert.informativeText = "Turn on Screenpop in System Settings › Privacy & Security › Screen & System Audio Recording, then reopen Screenpop."
-        alert.addButton(withTitle: "Open System Settings")
-        alert.addButton(withTitle: "Cancel")
-        NSApp.activate()
-        if alert.runModal() == .alertFirstButtonReturn {
-            NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!)
-        }
     }
 }

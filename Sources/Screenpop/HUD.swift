@@ -111,7 +111,7 @@ final class HUD {
     }
 }
 
-private struct CardView: View {
+struct CardView: View {
     let card: CaptureCard
     let onHover: (Bool) -> Void
 

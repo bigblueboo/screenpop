@@ -20,6 +20,11 @@ final class Settings {
         didSet { defaults.set(saveFolder.path, forKey: "saveFolder") }
     }
 
+    /// Set when the user finishes the setup window with Screen Recording allowed.
+    var onboarded: Bool {
+        didSet { defaults.set(onboarded, forKey: "onboarded") }
+    }
+
     var shortcut: Shortcut {
         didSet { defaults.set(try? JSONEncoder().encode(shortcut), forKey: "shortcut") }
     }
@@ -29,8 +34,18 @@ final class Settings {
         copyToClipboard = defaults.object(forKey: "copyToClipboard") as? Bool ?? true
         saveFolder = defaults.string(forKey: "saveFolder").map { URL(fileURLWithPath: $0) }
             ?? FileManager.default.homeDirectoryForCurrentUser.appending(path: "Pictures/Screenpop")
+        onboarded = defaults.bool(forKey: "onboarded")
         shortcut = defaults.data(forKey: "shortcut").flatMap { try? JSONDecoder().decode(Shortcut.self, from: $0) }
             ?? .standard
+    }
+}
+
+enum AppInfo {
+    /// "1.2.0 (57)" in a release build; "dev" when run outside a bundle.
+    static var version: String {
+        let info = Bundle.main.infoDictionary ?? [:]
+        guard let short = info["CFBundleShortVersionString"] as? String else { return "dev" }
+        return (info["CFBundleVersion"] as? String).map { "\(short) (\($0))" } ?? short
     }
 }
 

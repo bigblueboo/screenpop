@@ -9,6 +9,12 @@ if let flag = arguments.firstIndex(of: "--process") {
     dispatchMain()
 }
 
+if let flag = arguments.firstIndex(of: "--snapshot"), arguments.indices.contains(flag + 1) {
+    _ = NSApplication.shared
+    do { try Snapshots.write(to: URL(fileURLWithPath: arguments[flag + 1])) } catch { print(error); exit(1) }
+    exit(0)
+}
+
 let app = NSApplication.shared
 let delegate = AppDelegate()
 app.delegate = delegate

@@ -6,10 +6,12 @@ import SwiftUI
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let settings = Settings()
     private let hud = HUD()
-    private lazy var pipeline = Pipeline(settings: settings, hud: hud)
+    private let screenAccess = ScreenAccess()
+    private lazy var pipeline = Pipeline(settings: settings, hud: hud) { [weak self] in self?.openSetup() }
     private lazy var hotKey = HotKey { [weak self] in self?.pipeline.capture() }
     private var statusItem: NSStatusItem?
     private var settingsWindow: NSWindow?
+    private var setupWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -22,11 +24,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         hotKey.register(settings.shortcut)
         Task.detached(priority: .utility) { Cutout.warmUp() }
-        if !CGPreflightScreenCaptureAccess() { CGRequestScreenCaptureAccess() }
+        if !screenAccess.isGranted || !settings.onboarded { openSetup() }
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
+        if !CGPreflightScreenCaptureAccess() {
+            menu.addItem(withTitle: "Allow Screen Recording…", action: #selector(openSetup), keyEquivalent: "")
+            menu.addItem(.separator())
+        }
         let capture = menu.addItem(withTitle: settings.removeBackground ? "Capture Cutout" : "Capture Screenshot",
                                    action: #selector(capture), keyEquivalent: settings.shortcut.key)
         capture.keyEquivalentModifierMask = settings.shortcut.flags
@@ -76,19 +82,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func openSettings() {
-        if settingsWindow == nil {
-            let view = SettingsView(settings: settings) { [weak self] recording in
+        present(\.settingsWindow, title: "Screenpop Settings") {
+            SettingsView(settings: settings) { [weak self] recording in
                 guard let self else { return }
                 if recording { hotKey.unregister() } else { hotKey.register(settings.shortcut) }
             }
-            let window = NSWindow(contentViewController: NSHostingController(rootView: view))
-            window.title = "Screenpop Settings"
+        }
+    }
+
+    @objc private func openSetup() {
+        screenAccess.refresh()
+        present(\.setupWindow, title: "Welcome to Screenpop") {
+            OnboardingView(settings: settings, access: screenAccess) { [weak self] in
+                guard let self else { return }
+                if screenAccess.isGranted { settings.onboarded = true }
+                setupWindow?.close()
+            }
+        }
+    }
+
+    /// Shows the window in `slot`, creating it on first use.
+    private func present(_ slot: ReferenceWritableKeyPath<AppDelegate, NSWindow?>, title: String,
+                         content: () -> some View) {
+        let window = self[keyPath: slot] ?? {
+            let window = NSWindow(contentViewController: NSHostingController(rootView: content()))
+            window.title = title
             window.styleMask = [.titled, .closable]
             window.isReleasedWhenClosed = false
             window.center()
-            settingsWindow = window
-        }
+            self[keyPath: slot] = window
+            return window
+        }()
         NSApp.activate()
-        settingsWindow?.makeKeyAndOrderFront(nil)
+        window.makeKeyAndOrderFront(nil)
     }
 }

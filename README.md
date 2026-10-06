@@ -4,68 +4,83 @@ A menu bar app for macOS. Press ⌃⇧4, drag a rectangle, and Screenpop cuts th
 
 ## Install
 
-You need an Apple Silicon Mac on macOS 14 or later, with Xcode or the Command Line Tools (`xcode-select --install`).
+Needs macOS 14 (Sonoma) or later, on Apple Silicon or Intel.
 
-In Terminal on that Mac (not over SSH, since signing needs the login keychain unlocked):
+```sh
+brew install --cask bigblueboo/tap/screenpop
+```
+
+Or download `Screenpop-<version>.zip` from [Releases](https://github.com/bigblueboo/screenpop/releases), unzip it, and drag Screenpop to Applications. Releases are notarized, so they open without a Gatekeeper warning.
+
+On first launch a setup window walks you through the rest:
+
+1. **Allow screen recording.** Click Allow…, then turn on Screenpop in System Settings. If macOS offers Quit & Reopen, take it; the window comes back with the step ticked.
+2. **Add your OpenAI key** (optional). It's saved in your Keychain. Without one, files keep a timestamp name.
+3. **Try it:** press ⌃⇧4 and drag over anything.
+
+`brew upgrade --cask screenpop` updates it. Releases share one signature, so Screen Recording stays allowed across updates.
+
+### From source
+
+Needs Xcode or the Command Line Tools (`xcode-select --install`). In Terminal on the Mac itself (signing needs the login keychain unlocked, so not over SSH):
 
 ```sh
 gh repo clone bigblueboo/screenpop ~/dev/screenpop
 cd ~/dev/screenpop
-make install
+make install          # build, sign, copy to /Applications, launch
 ```
 
-This builds the app, copies it to `/Applications`, and launches it. A scissors icon appears in the menu bar. Then:
+`git pull && make install` updates it.
 
-1. Allow Screen Recording when macOS asks, and reopen Screenpop (`open -a Screenpop`).
-2. Click the scissors › Settings…, paste your OpenAI key and press Return. Turn on Open at login while you're there.
+`make install` signs with your Apple Development certificate when it finds one, which keeps the Screen Recording permission across rebuilds. Without one (or with the keychain locked) it signs ad-hoc, and macOS asks for Screen Recording again after each rebuild. If macOS refuses to launch the certificate-signed build ("Launchd job spawn failed", code 163, usually a stale certificate), it re-signs ad-hoc and launches again. `make install IDENTITY=-` skips the certificate entirely.
 
-To update later: `git pull && make install`.
-
-### Signing
-
-`make install` signs with your Apple Development certificate when it can find one, which keeps the Screen Recording permission across rebuilds. If there's no certificate or the keychain is locked, it signs ad-hoc instead. If macOS refuses to launch the certificate-signed build (a stale certificate shows up as "Launchd job spawn failed", code 163), it re-signs ad-hoc and launches again. Ad-hoc builds behave the same, except macOS asks for Screen Recording again after each rebuild. `make install IDENTITY=-` skips the certificate entirely.
-
-### On a Mac without Xcode
-
-Build a zip on a Mac that has Xcode:
-
-```sh
-make zip            # writes build/Screenpop.zip
-```
-
-Copy it over with `scp` or AirDrop, then on the target Mac:
-
-```sh
-ditto -x -k Screenpop.zip /Applications
-xattr -dr com.apple.quarantine /Applications/Screenpop.app   # needed after AirDrop or a download
-open /Applications/Screenpop.app
-```
+A source build and a Homebrew install have different signatures, so switching between them means allowing Screen Recording again.
 
 ## Use
 
 - **⌃⇧4** starts a capture. Space switches to window capture and Esc cancels.
 - **Remove Background** and **Copy to Clipboard** are toggles in the menu, both on by default. With background removal off you get a plain named screenshot. If Vision finds no subject (a text-only window, say), you get the full rectangle.
-- **Settings…** changes the shortcut and save folder, and stores the OpenAI key.
+- **Settings…** changes the shortcut and save folder, and stores the OpenAI key. The version number is at the bottom.
 
-The OpenAI key is looked up in this order:
+Naming sends a 512-pixel JPEG of each capture to OpenAI and nothing else. The key is looked up in this order:
 
 1. The Keychain, which is where Settings saves it
 2. `OPENAI_API_KEY` in the environment, when launched from a shell
 3. `~/.secrets/screenpop/openai.env`, as `OPENAI_API_KEY=sk-…`
 
-Without a key, captures still work and keep a timestamp name.
-
 ## Quality gates
 
 ```sh
-make test           # swift test: naming, slugging, API parsing
-make app            # release build + codesign into build/Screenpop.app
+make test                 # swift test: naming, slugging, API parsing
+make app                  # native-arch build, signed for local use
+make bundle UNIVERSAL=1   # arm64 + x86_64 build (needs full Xcode)
 ```
 
-To run the cutout and naming steps without the UI:
+Two hooks for checking things without a screen:
 
 ```sh
-build/Screenpop.app/Contents/MacOS/Screenpop --process photo.png out.png
+build/Screenpop.app/Contents/MacOS/Screenpop --process photo.png out.png   # cutout + naming, no UI
+open build/Screenpop.app --args --snapshot /tmp/shots                      # renders the windows to PNGs
 ```
 
 The icon art (`Resources/AppIcon-source.png`) came from `genai-image`. `make icon` masks it to the macOS icon shape and rebuilds `Resources/AppIcon.icns`.
+
+## Releasing
+
+```sh
+make release VERSION=1.2.0
+```
+
+[`scripts/release.sh`](scripts/release.sh) checks everything it needs before building. It then makes a universal build, signs it with Developer ID, notarizes and staples it, tags `v1.2.0`, uploads the zip to a GitHub release, and updates `Casks/screenpop.rb` in [bigblueboo/homebrew-tap](https://github.com/bigblueboo/homebrew-tap) from [`packaging/screenpop.rb`](packaging/screenpop.rb). The version shown in the app comes from the tag; the build number is the commit count.
+
+One-time setup on the Mac you release from:
+
+1. **Developer ID certificate.** Xcode › Settings › Accounts › your team › Manage Certificates › + › Developer ID Application. This needs a paid Apple Developer Program membership, and you must be the team's Account Holder.
+2. **Notarization credentials.** Make an app-specific password at [account.apple.com](https://account.apple.com) (Sign-In and Security › App-Specific Passwords), then:
+
+   ```sh
+   xcrun notarytool store-credentials screenpop --apple-id <your Apple ID> --team-id <team ID>
+   ```
+
+   The team ID is the 10-character code in parentheses after your name in the certificate.
+3. **`gh auth login`**, with push access to this repo and the tap.
