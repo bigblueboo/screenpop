@@ -3,7 +3,7 @@ DEST     ?= /Applications
 # A stable signing identity keeps the Screen Recording grant across rebuilds.
 IDENTITY ?= $(shell security find-identity -v -p codesigning | awk -F'"' '/Apple Development/ {print $$2; exit}')
 
-.PHONY: app install icon test clean
+.PHONY: app install zip icon test clean
 
 app:
 	swift build -c release --arch arm64
@@ -22,7 +22,14 @@ install: app
 	@pkill -x Screenpop || true
 	rm -rf $(DEST)/Screenpop.app
 	ditto $(APP) $(DEST)/Screenpop.app
-	open $(DEST)/Screenpop.app
+	@open $(DEST)/Screenpop.app 2>/dev/null \
+		|| { echo "macOS refused to launch the certificate-signed build; re-signing ad-hoc."; \
+		     codesign --force --options runtime --sign - $(DEST)/Screenpop.app && open $(DEST)/Screenpop.app; }
+
+# build/Screenpop.zip, for copying to a Mac without Xcode.
+zip: app
+	ditto -c -k --keepParent $(APP) build/Screenpop.zip
+	@echo "wrote build/Screenpop.zip"
 
 # Regenerates Resources/AppIcon.icns from Resources/AppIcon-source.png.
 icon:
