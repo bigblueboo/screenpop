@@ -84,3 +84,7 @@ One-time setup on the Mac you release from:
 
    The team ID is the 10-character code in parentheses after your name in the certificate.
 3. **`gh auth login`**, with push access to this repo and the tap.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
